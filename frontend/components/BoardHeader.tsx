@@ -5,10 +5,8 @@ import type { Filter, User } from "@/lib/types";
 import { Logo } from "./Logo";
 import { Seg } from "./Seg";
 
-export function BoardHeader({ user, boardName, filter, onFilter, onManage, onNew, onSignOut, onSwitchRole }: {
+export function BoardHeader({ user, boardName, filter, onFilter, onManage, onNew, onSignOut }: {
   user: User; boardName: string; filter: Filter; onFilter: (f: Filter) => void; onManage: () => void; onNew: () => void; onSignOut: () => void;
-  /** Demo only — remove in production; role comes from the session. */
-  onSwitchRole?: () => void;
 }) {
   const admin = user.role === "admin";
   return (
@@ -32,10 +30,10 @@ export function BoardHeader({ user, boardName, filter, onFilter, onManage, onNew
         <Plus size={15} strokeWidth={2.4} />New card
       </button>
       <div className="flex items-center gap-1">
-        <button type="button" onClick={onSwitchRole} title="Switch role (demo)" className="inline-flex min-h-[36px] items-center gap-2 whitespace-nowrap px-1.5 text-xs text-muted hover:text-ink">
+        <span className="inline-flex min-h-[36px] items-center gap-2 whitespace-nowrap px-1.5 text-xs text-muted">
           <span className="grid h-7 w-7 place-items-center bg-surface-3 text-[11px] font-extrabold text-ink">{user.initials}</span>
-          {onSwitchRole && (admin ? "View as member" : "View as admin")}
-        </button>
+          {user.name}
+        </span>
         <button type="button" onClick={onSignOut} title="Sign out" className="grid h-9 w-9 place-items-center text-muted hover:text-accent"><LogOut size={16} /></button>
       </div>
     </header>
