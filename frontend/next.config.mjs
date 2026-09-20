@@ -33,6 +33,9 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  // Emit a self-contained server bundle (.next/standalone/server.js) so the
+  // production image can run without dev dependencies or a full node_modules.
+  output: "standalone",
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
