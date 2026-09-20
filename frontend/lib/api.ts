@@ -2,7 +2,7 @@
 // (/api/auth/*, /api/cards/*). The session is an httpOnly cookie, so every
 // request sends credentials. Non-2xx responses throw an ApiError carrying the
 // status and the server's error message — callers surface/handle it, never swallow.
-import type { Card, CardInput, ColumnId, User } from "./types";
+import type { Card, CardInput, ColumnId, Profile, ProfilePatch, User } from "./types";
 
 /** A card write can also carry assignment (ownerId) and the help flag. */
 export type CardPatch = Partial<CardInput> & { ownerId?: string; needsHelp?: boolean };
@@ -50,4 +50,28 @@ export const api = {
   moveCard: (id: string, column: ColumnId) =>
     j<Card>(`/api/cards/${id}/move`, { method: "POST", body: JSON.stringify({ column }) }),
   deleteCard: (id: string) => j<void>(`/api/cards/${id}`, { method: "DELETE" }),
+
+  // Profile is always the session user's own (no id param, server-enforced).
+  getProfile: () => j<Profile>("/api/profile"),
+  updateProfile: (patch: ProfilePatch) =>
+    j<Profile>("/api/profile", { method: "PATCH", body: JSON.stringify(patch) }),
+
+  // Avatar upload is multipart, so it bypasses the JSON `j` helper (the browser
+  // must set the multipart boundary). Same credentials + ApiError handling.
+  uploadAvatar: async (file: File): Promise<Profile> => {
+    const form = new FormData();
+    form.append("avatar", file);
+    const r = await fetch("/api/profile/avatar", { method: "POST", credentials: "include", body: form });
+    if (!r.ok) {
+      let message = `${r.status} ${r.statusText}`;
+      try {
+        const body = await r.json();
+        if (body && typeof body.error === "string") message = body.error;
+      } catch {
+        /* no JSON body */
+      }
+      throw new ApiError(r.status, message);
+    }
+    return r.json() as Promise<Profile>;
+  },
 };

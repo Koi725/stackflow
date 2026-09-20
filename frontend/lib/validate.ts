@@ -1,4 +1,4 @@
-import type { CardInput } from "./types";
+import type { CardInput, ProfilePatch } from "./types";
 
 // Server-side input validation for card writes. Enum sets mirror
 // frontend/lib/types.ts. Returns a discriminated result so routes can answer
@@ -91,4 +91,34 @@ export function validateColumn(body: unknown): Result<CardInput["column"]> {
   const col = (body as Record<string, unknown>).column;
   if (!isEnum(COLUMNS, col)) return { ok: false, error: `column must be one of ${COLUMNS.join(", ")}` };
   return { ok: true, value: col };
+}
+
+/**
+ * Validate a self-profile PATCH (PATCH /api/profile). Only firstName, lastName and
+ * age are ever accepted — role, email and id are intentionally NOT read here, so
+ * they can never be changed through this endpoint. Empty strings clear a name.
+ */
+export function validateProfilePatch(body: unknown): Result<ProfilePatch> {
+  if (typeof body !== "object" || body === null) return { ok: false, error: "Body must be a JSON object" };
+  const b = body as Record<string, unknown>;
+  const patch: ProfilePatch = {};
+
+  for (const field of ["firstName", "lastName"] as const) {
+    if (b[field] !== undefined) {
+      if (b[field] === null) { patch[field] = null; continue; }
+      if (typeof b[field] !== "string") return { ok: false, error: `${field} must be a string or null` };
+      const trimmed = (b[field] as string).trim();
+      if (trimmed.length > 80) return { ok: false, error: `${field} must be 80 characters or fewer` };
+      patch[field] = trimmed || null; // empty → clear
+    }
+  }
+
+  if (b.age !== undefined) {
+    if (b.age === null) patch.age = null;
+    else if (typeof b.age !== "number" || !Number.isInteger(b.age) || b.age < 0 || b.age > 120) {
+      return { ok: false, error: "age must be a whole number between 0 and 120, or null" };
+    } else patch.age = b.age;
+  }
+
+  return { ok: true, value: patch };
 }
