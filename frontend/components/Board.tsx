@@ -4,12 +4,12 @@ import { LayoutGroup } from "framer-motion";
 import { Lock } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import { canDelete, canEdit, canManageBoard } from "@/lib/permissions";
+import { canAssign, canDelete, canEdit, canManageBoard } from "@/lib/permissions";
 import { COLUMNS, PRIORITIES } from "@/lib/tokens";
-import type { Card as CardT, CardInput, ColumnId, Filter, User } from "@/lib/types";
+import type { Card as CardT, ColumnId, Filter, User } from "@/lib/types";
 import { BoardHeader } from "./BoardHeader";
 import { Card, CardFace } from "./Card";
-import { CardComposer } from "./CardComposer";
+import { CardComposer, type ComposerInput } from "./CardComposer";
 import { CardDetail } from "./CardDetail";
 import { Column } from "./Column";
 import { ManagePanel } from "./ManagePanel";
@@ -17,8 +17,8 @@ import { Toast } from "./Toast";
 
 type Modal = { type: "detail"; id: string } | { type: "compose"; id?: string; column?: ColumnId } | { type: "manage" } | null;
 
-export function Board({ user, members, initialCards, onSignOut, onSwitchRole }: {
-  user: User; members: User[]; initialCards: CardT[]; onSignOut: () => void; onSwitchRole?: () => void;
+export function Board({ user, members, initialCards, onSignOut }: {
+  user: User; members: User[]; initialCards: CardT[]; onSignOut: () => void;
 }) {
   const [cards, setCards] = useState(initialCards);
   const [filter, setFilter] = useState<Filter>("all");
@@ -47,16 +47,23 @@ export function Board({ user, members, initialCards, onSignOut, onSwitchRole }: 
     const prev = cards; setCards((cs) => cs.filter((c) => c.id !== id)); setModal(null); showToast("Card deleted");
     try { await api.deleteCard(id); } catch { setCards(prev); showToast("Couldn't delete card"); }
   };
-  const save = async (input: CardInput) => {
+  const save = async (input: ComposerInput) => {
     if (modal?.type === "compose" && modal.id) {
       const id = modal.id; const prev = cards;
       setCards((cs) => cs.map((c) => (c.id === id ? { ...c, ...input } : c))); setModal({ type: "detail", id }); showToast("Card updated");
       try { const saved = await api.updateCard(id, input); setCards((cs) => cs.map((c) => (c.id === id ? saved : c))); } catch { setCards(prev); showToast("Couldn't save"); }
     } else {
-      const tmp: CardT = { id: `tmp-${Date.now()}`, ...input, ownerId: user.id, createdAt: new Date().toISOString() };
+      const tmpId = `tmp-${Date.now()}`;
+      const tmp: CardT = { id: tmpId, ...input, ownerId: input.ownerId ?? user.id, needsHelp: false, createdAt: new Date().toISOString() };
       setCards((cs) => [...cs, tmp]); setModal(null); showToast("Card created");
-      try { const saved = await api.createCard(input); setCards((cs) => cs.map((c) => (c.id === tmp.id ? saved : c))); } catch { setCards((cs) => cs.filter((c) => c.id !== tmp.id)); showToast("Couldn't create card"); }
+      try { const saved = await api.createCard(input); setCards((cs) => cs.map((c) => (c.id === tmpId ? saved : c))); } catch { setCards((cs) => cs.filter((c) => c.id !== tmpId)); showToast("Couldn't create card"); }
     }
+  };
+  const toggleHelp = async (id: string, needsHelp: boolean) => {
+    const prev = cards;
+    setCards((cs) => cs.map((c) => (c.id === id ? { ...c, needsHelp } : c))); // optimistic
+    try { const saved = await api.updateCard(id, { needsHelp }); setCards((cs) => cs.map((c) => (c.id === id ? saved : c))); }
+    catch { setCards(prev); showToast("Couldn't update help flag"); }
   };
 
   const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
@@ -70,7 +77,7 @@ export function Board({ user, members, initialCards, onSignOut, onSwitchRole }: 
   return (
     <div className="flex min-h-0 flex-1 flex-col animate-wipe">
       <BoardHeader user={user} boardName="Launch v2" filter={filter} onFilter={setFilter} onManage={() => setModal({ type: "manage" })}
-        onNew={() => setModal({ type: "compose" })} onSignOut={onSignOut} onSwitchRole={onSwitchRole} />
+        onNew={() => setModal({ type: "compose" })} onSignOut={onSignOut} />
       {user.role === "member" && (
         <div className="flex items-center gap-2.5 border-b border-hairline px-[clamp(16px,3vw,32px)] py-2.5 text-[13px] text-muted"><Lock size={14} />Drag your own cards. Teammates' cards are read-only.</div>
       )}
@@ -104,9 +111,10 @@ export function Board({ user, members, initialCards, onSignOut, onSwitchRole }: 
       </DndContext>
 
       <CardDetail card={detail} owner={detail ? ownerOf(detail) : undefined} canEdit={!!detail && canEdit(user, detail)} canDelete={canDelete(user)}
-        onClose={() => setModal(null)} onMove={(col) => detail && move(detail.id, col)} onEdit={() => detail && setModal({ type: "compose", id: detail.id })} onDelete={() => detail && remove(detail.id)} />
-      <CardComposer open={modal?.type === "compose"} initial={composeInitial ? { title: composeInitial.title, description: composeInitial.description, label: composeInitial.label, priority: composeInitial.priority, column: composeInitial.column } : null}
-        defaultColumn={modal?.type === "compose" ? modal.column : undefined} onClose={() => setModal(null)} onSave={save} />
+        onClose={() => setModal(null)} onMove={(col) => detail && move(detail.id, col)} onEdit={() => detail && setModal({ type: "compose", id: detail.id })} onDelete={() => detail && remove(detail.id)}
+        onToggleHelp={(v) => detail && toggleHelp(detail.id, v)} />
+      <CardComposer open={modal?.type === "compose"} initial={composeInitial ? { title: composeInitial.title, description: composeInitial.description, label: composeInitial.label, priority: composeInitial.priority, column: composeInitial.column, ownerId: composeInitial.ownerId } : null}
+        defaultColumn={modal?.type === "compose" ? modal.column : undefined} currentUserId={user.id} members={members} canAssign={canAssign(user)} onClose={() => setModal(null)} onSave={save} />
       <ManagePanel open={modal?.type === "manage"} cards={cards} onClose={() => setModal(null)} />
       <Toast message={toast} />
     </div>
