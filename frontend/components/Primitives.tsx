@@ -16,6 +16,15 @@ export function PriorityDot({ id, size = "sm" }: { id: Priority; size?: "sm" | "
 }
 
 export function Avatar({ user, size = 22 }: { user: User; size?: number }) {
+  // Uploaded picture if present; otherwise the initials fallback. Square (radius 0)
+  // to match the Modernist system; object-cover so images never distort.
+  if (user.avatarUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- served from our own hardened /api/avatar route
+      <img src={user.avatarUrl} alt={user.name} title={user.name} width={size} height={size}
+        className="object-cover" style={{ width: size, height: size }} />
+    );
+  }
   return (
     <span className={`grid place-items-center font-extrabold ${avatarClass(user.id)}`} style={{ width: size, height: size, fontSize: size * 0.4 }} title={user.name}>
       {user.initials}

@@ -6,20 +6,32 @@ import { useCallback, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { canAssign, canDelete, canEdit, canManageBoard } from "@/lib/permissions";
 import { COLUMNS, PRIORITIES } from "@/lib/tokens";
-import type { Card as CardT, ColumnId, Filter, User } from "@/lib/types";
+import type { Card as CardT, ColumnId, Filter, Profile as ProfileT, User } from "@/lib/types";
 import { BoardHeader } from "./BoardHeader";
 import { Card, CardFace } from "./Card";
 import { CardComposer, type ComposerInput } from "./CardComposer";
 import { CardDetail } from "./CardDetail";
 import { Column } from "./Column";
 import { ManagePanel } from "./ManagePanel";
+import { Profile } from "./Profile";
 import { Toast } from "./Toast";
+import { Tour } from "./Tour";
 
-type Modal = { type: "detail"; id: string } | { type: "compose"; id?: string; column?: ColumnId } | { type: "manage" } | null;
+type Modal =
+  | { type: "detail"; id: string }
+  | { type: "compose"; id?: string; column?: ColumnId }
+  | { type: "manage" }
+  | { type: "profile" }
+  | { type: "tour" }
+  | null;
 
-export function Board({ user, members, initialCards, onSignOut }: {
+export function Board({ user: initialUser, members: initialMembers, initialCards, onSignOut }: {
   user: User; members: User[]; initialCards: CardT[]; onSignOut: () => void;
 }) {
+  // user/members are stateful so a profile edit (name, avatar) reflects instantly
+  // across the header and the board without a reload.
+  const [user, setUser] = useState(initialUser);
+  const [members, setMembers] = useState(initialMembers);
   const [cards, setCards] = useState(initialCards);
   const [filter, setFilter] = useState<Filter>("all");
   const [modal, setModal] = useState<Modal>(null);
@@ -66,6 +78,14 @@ export function Board({ user, members, initialCards, onSignOut }: {
     catch { setCards(prev); showToast("Couldn't update help flag"); }
   };
 
+  // Reflect a saved profile everywhere: the current user + their entry in members
+  // (so their own cards' avatars update too).
+  const onProfileSaved = (p: ProfileT) => {
+    const patch = { name: p.name, initials: p.initials, avatarUrl: p.avatarUrl };
+    setUser((u) => ({ ...u, ...patch }));
+    setMembers((ms) => ms.map((m) => (m.id === p.id ? { ...m, ...patch } : m)));
+  };
+
   const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
   const onDragOver = (e: DragOverEvent) => setOverCol((e.over?.id as ColumnId) ?? null);
   const onDragEnd = (e: DragEndEvent) => { const col = e.over?.id as ColumnId | undefined; if (col) move(String(e.active.id), col); setActiveId(null); setOverCol(null); };
@@ -77,7 +97,8 @@ export function Board({ user, members, initialCards, onSignOut }: {
   return (
     <div className="flex min-h-0 flex-1 flex-col animate-wipe">
       <BoardHeader user={user} boardName="Launch v2" filter={filter} onFilter={setFilter} onManage={() => setModal({ type: "manage" })}
-        onNew={() => setModal({ type: "compose" })} onSignOut={onSignOut} />
+        onNew={() => setModal({ type: "compose" })} onSignOut={onSignOut}
+        onHelp={() => setModal({ type: "tour" })} onProfile={() => setModal({ type: "profile" })} />
       {user.role === "member" && (
         <div className="flex items-center gap-2.5 border-b border-hairline px-[clamp(16px,3vw,32px)] py-2.5 text-[13px] text-muted"><Lock size={14} />Drag your own cards. Teammates' cards are read-only.</div>
       )}
@@ -116,6 +137,8 @@ export function Board({ user, members, initialCards, onSignOut }: {
       <CardComposer open={modal?.type === "compose"} initial={composeInitial ? { title: composeInitial.title, description: composeInitial.description, label: composeInitial.label, priority: composeInitial.priority, column: composeInitial.column, ownerId: composeInitial.ownerId } : null}
         defaultColumn={modal?.type === "compose" ? modal.column : undefined} currentUserId={user.id} members={members} canAssign={canAssign(user)} onClose={() => setModal(null)} onSave={save} />
       <ManagePanel open={modal?.type === "manage"} cards={cards} onClose={() => setModal(null)} />
+      <Profile open={modal?.type === "profile"} onClose={() => setModal(null)} onSaved={onProfileSaved} />
+      <Tour open={modal?.type === "tour"} onClose={() => setModal(null)} />
       <Toast message={toast} />
     </div>
   );

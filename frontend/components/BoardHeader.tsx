@@ -1,17 +1,21 @@
 "use client";
-import { LogOut, Plus, Settings2 } from "lucide-react";
+import { HelpCircle, LogOut, Plus, Settings2 } from "lucide-react";
 import { canFilter, canManageBoard } from "@/lib/permissions";
 import type { Filter, User } from "@/lib/types";
+import { Avatar } from "./Primitives";
 import { Logo } from "./Logo";
 import { Seg } from "./Seg";
 
-export function BoardHeader({ user, boardName, filter, onFilter, onManage, onNew, onSignOut }: {
+export function BoardHeader({ user, boardName, filter, onFilter, onManage, onNew, onSignOut, onHelp, onProfile }: {
   user: User; boardName: string; filter: Filter; onFilter: (f: Filter) => void; onManage: () => void; onNew: () => void; onSignOut: () => void;
+  onHelp: () => void; onProfile: () => void;
 }) {
   const admin = user.role === "admin";
   return (
     <header className="flex flex-wrap items-center gap-4 border-b-2 border-rule px-[clamp(16px,3vw,32px)] py-3">
       <div className="mr-auto flex items-center gap-2.5">
+        <button type="button" onClick={onHelp} title="How this works" aria-label="Open the quick tour"
+          className="grid h-9 w-9 place-items-center text-muted hover:text-accent"><HelpCircle size={18} /></button>
         <Logo size={24} />
         <span className="mx-1.5 h-5 w-0.5 bg-rule" />
         <span className="text-sm text-muted">{boardName}</span>
@@ -30,10 +34,11 @@ export function BoardHeader({ user, boardName, filter, onFilter, onManage, onNew
         <Plus size={15} strokeWidth={2.4} />New card
       </button>
       <div className="flex items-center gap-1">
-        <span className="inline-flex min-h-[36px] items-center gap-2 whitespace-nowrap px-1.5 text-xs text-muted">
-          <span className="grid h-7 w-7 place-items-center bg-surface-3 text-[11px] font-extrabold text-ink">{user.initials}</span>
+        <button type="button" onClick={onProfile} title="Your profile"
+          className="inline-flex min-h-[36px] items-center gap-2 whitespace-nowrap px-1.5 text-xs text-muted hover:text-ink">
+          <Avatar user={user} size={28} />
           {user.name}
-        </span>
+        </button>
         <button type="button" onClick={onSignOut} title="Sign out" className="grid h-9 w-9 place-items-center text-muted hover:text-accent"><LogOut size={16} /></button>
       </div>
     </header>
