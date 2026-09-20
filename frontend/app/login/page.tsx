@@ -5,13 +5,11 @@ import { useState } from "react";
 import { api } from "@/lib/api";
 import { KineticBoard } from "@/components/KineticBoard";
 import { Logo } from "@/components/Logo";
-import type { Role } from "@/lib/types";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Role>("admin"); // DEMO ONLY — remove; role comes from the server session
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -36,14 +34,6 @@ export default function LoginPage() {
         <form onSubmit={submit} className="flex flex-col gap-3.5">
           <label className="flex flex-col gap-1.5 text-xs text-muted">Email<input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@team.dev" className={input} /></label>
           <label className="flex flex-col gap-1.5 text-xs text-muted">Password<input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={input} /></label>
-          {/* DEMO ONLY: role picker. Delete this block in production. */}
-          <div className="flex flex-col gap-1.5 text-xs text-muted">Sign in as
-            <div className="inline-flex self-start border border-rule">
-              {(["admin", "member"] as Role[]).map((r, i) => (
-                <button key={r} type="button" onClick={() => setRole(r)} className={`min-h-[44px] px-4 text-[13px] font-semibold capitalize ${i ? "border-l border-rule" : ""} ${role === r ? "bg-accent text-ink" : "text-ink hover:bg-ink/[.08]"}`}>{r}</button>
-              ))}
-            </div>
-          </div>
           {error && <div role="alert" className="border border-accent-soft/50 px-3.5 py-3 text-[13px] text-accent-soft">{error}</div>}
           <button type="submit" disabled={busy} className="mt-2 flex min-h-[50px] items-center justify-between gap-3 bg-accent px-[18px] py-3.5 text-left text-[15px] font-extrabold text-ink transition-colors hover:bg-accent-hover active:bg-accent-active disabled:opacity-45">
             <span>Enter the board</span><ArrowRight size={18} strokeWidth={2.2} />
