@@ -21,6 +21,12 @@ model User {
   // (AUTH_MODE=local) users always have a bcrypt hash here.
   passwordHash String?
   role         Role    @default(member)
+  // Optional profile fields the user edits themselves via /api/profile.
+  // avatarUrl points at our own /api/avatar/<uuid> serving route (never a remote URL).
+  avatarUrl    String?
+  firstName    String?
+  lastName     String?
+  age          Int?
   cards        Card[]
 }
 
