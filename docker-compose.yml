@@ -1,0 +1,51 @@
+# Stackflow production stack: the Next.js app + its own PostgreSQL.
+#
+# Secrets/config come from a root .env (gitignored) — see .env.example.
+# The app port is bound to 127.0.0.1 ONLY; nginx on the host fronts it and is the
+# only thing that should be publicly exposed. Never publish the app or db directly.
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Not published — only reachable by the app service on the internal network.
+
+  app:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    # All app secrets/config (SESSION_SECRET, DATABASE_URL, AUTH_MODE, seed
+    # passwords, etc.) come from the root .env.
+    env_file:
+      - .env
+    environment:
+      # Persisted avatar dir — MUST match the mounted volume below so uploads
+      # survive rebuilds/redeploys. Defaults here in case it's omitted from .env.
+      AVATAR_UPLOAD_DIR: ${AVATAR_UPLOAD_DIR:-/app/var/avatars}
+    volumes:
+      # Uploaded avatars live on a named volume, NOT in the image — they persist
+      # across `docker compose build --no-cache` and redeploys.
+      - avatars:/app/var/avatars
+    ports:
+      # Bound to loopback only. nginx (host) proxies to 127.0.0.1:3400.
+      - "127.0.0.1:3400:3000"
+
+volumes:
+  pgdata: # PostgreSQL data — persists across deploys
+  avatars: # uploaded user avatars — persists across deploys
