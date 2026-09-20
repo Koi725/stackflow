@@ -12,3 +12,8 @@ export const canEdit = (user: SessionUser, card: OwnedCard) => user.role === "ad
 export const canMove = canEdit;
 export const canDelete = (user: SessionUser) => user.role === "admin";
 export const canManageBoard = (user: SessionUser) => user.role === "admin";
+// Assignment = setting a card's ownerId. Only admins may assign to anyone;
+// members are always the owner of their own cards and cannot reassign.
+export const canAssign = (user: SessionUser) => user.role === "admin";
+// A member may raise/lower the help flag on their OWN card; admins on any card.
+export const canToggleHelp = (user: SessionUser, card: OwnedCard) => user.role === "admin" || card.ownerId === user.id;
