@@ -1,24 +1,36 @@
 "use client";
 import { useEffect, useState } from "react";
 import { COLUMNS, LABELS, PRIORITIES } from "@/lib/tokens";
-import type { CardInput, ColumnId, LabelId, Priority } from "@/lib/types";
+import type { CardInput, ColumnId, LabelId, Priority, User } from "@/lib/types";
 import { Kicker, Modal, ModalFooter, ModalHeader } from "./Modal";
 import { Seg } from "./Seg";
 
 const EMPTY: CardInput = { title: "", description: "", label: "feature", priority: "med", column: "todo" };
 
-export function CardComposer({ open, initial, defaultColumn, onClose, onSave }: {
-  open: boolean; initial?: CardInput | null; defaultColumn?: ColumnId; onClose: () => void; onSave: (input: CardInput) => Promise<void> | void;
+/** A card write from the composer, optionally carrying an admin-chosen owner. */
+export type ComposerInput = CardInput & { ownerId?: string };
+
+export function CardComposer({ open, initial, defaultColumn, currentUserId, members, canAssign = false, onClose, onSave }: {
+  open: boolean; initial?: ComposerInput | null; defaultColumn?: ColumnId;
+  currentUserId: string; members: User[]; canAssign?: boolean;
+  onClose: () => void; onSave: (input: ComposerInput) => Promise<void> | void;
 }) {
   const [form, setForm] = useState<CardInput>(EMPTY);
+  // ownerId is only surfaced/sent for admins (assignment); members always own their own.
+  const [ownerId, setOwnerId] = useState<string>(currentUserId);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (open) setForm(initial ?? { ...EMPTY, column: defaultColumn ?? "todo" }); }, [open, initial, defaultColumn]);
+  useEffect(() => {
+    if (open) {
+      setForm(initial ?? { ...EMPTY, column: defaultColumn ?? "todo" });
+      setOwnerId(initial?.ownerId ?? currentUserId);
+    }
+  }, [open, initial, defaultColumn, currentUserId]);
   const set = <K extends keyof CardInput>(k: K) => (v: CardInput[K]) => setForm((f) => ({ ...f, [k]: v }));
   const valid = form.title.trim().length > 0;
 
   return (
     <Modal open={open} onClose={onClose} width={560}>
-      <form onSubmit={async (e) => { e.preventDefault(); if (!valid || busy) return; setBusy(true); try { await onSave({ ...form, title: form.title.trim() }); } finally { setBusy(false); } }}>
+      <form onSubmit={async (e) => { e.preventDefault(); if (!valid || busy) return; setBusy(true); try { await onSave({ ...form, title: form.title.trim(), ...(canAssign ? { ownerId } : {}) }); } finally { setBusy(false); } }}>
         <ModalHeader onClose={onClose}>
           <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent">{initial ? "Edit card" : "New card"}</span>
         </ModalHeader>
@@ -35,6 +47,10 @@ export function CardComposer({ open, initial, defaultColumn, onClose, onSave }: 
                 id, label: <><span className="h-2 w-2" style={{ background: id === form.priority ? "#f3f2f2" : PRIORITIES[id].hex }} />{PRIORITIES[id].name}</> }))} /></div>
           </div>
           <div><Kicker>Column</Kicker><Seg<ColumnId> value={form.column} onChange={set("column")} options={COLUMNS.map((c) => ({ id: c.id, label: c.name }))} /></div>
+          {canAssign && (
+            <div><Kicker>Assign to</Kicker>
+              <Seg<string> value={ownerId} onChange={setOwnerId} options={members.map((m) => ({ id: m.id, label: m.name }))} /></div>
+          )}
         </div>
         <ModalFooter>
           <button type="submit" disabled={!valid || busy} className="inline-flex min-h-[44px] items-center gap-2 bg-accent px-[18px] text-[13px] font-extrabold text-ink transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-45">
