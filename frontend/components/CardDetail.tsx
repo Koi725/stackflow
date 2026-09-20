@@ -14,7 +14,7 @@ export function CardDetail({ card, owner, canEdit, canDelete, onClose, onMove, o
   onToggleHelp: (needsHelp: boolean) => void;
 }) {
   return (
-    <Modal open={!!card} onClose={onClose} sheet width={640} accentTop={card ? PRIORITIES[card.priority].hex : undefined}>
+    <Modal open={!!card} onClose={onClose} width={640} accentTop={card ? PRIORITIES[card.priority].hex : undefined}>
       {card && owner && (
         <>
           <ModalHeader onClose={onClose}>
