@@ -1,0 +1,24 @@
+# Keep the build context (and final image) small and secret-free.
+node_modules
+.next
+out
+build
+
+# Never bake secrets or uploaded content into the image.
+.env
+.env.*
+!.env.example
+var/
+uploads/
+
+# Git / editor / OS / caches
+.git
+.gitignore
+.DS_Store
+*.tsbuildinfo
+*.log
+npm-debug.log*
+
+# Docker files themselves (not needed inside the build)
+Dockerfile
+.dockerignore
