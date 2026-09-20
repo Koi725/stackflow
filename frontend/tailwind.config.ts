@@ -3,7 +3,12 @@ import type { Config } from "tailwindcss";
 export default {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
-    fontFamily: { sans: ["var(--font-archivo)", "system-ui", "sans-serif"] },
+    fontFamily: {
+      // Clean, serious system UI stack for all body/UI text.
+      sans: ["system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+      // Bold display face — used only for the logo wordmark and the hero headline.
+      display: ["var(--font-archivo)", "system-ui", "sans-serif"],
+    },
     borderRadius: { none: "0", DEFAULT: "0", sm: "0", md: "0", lg: "0", full: "0" },
     extend: {
       colors: {

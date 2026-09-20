@@ -6,7 +6,7 @@ export function Logo({ size = 24, wordmark = true, className = "" }: { size?: nu
         <rect x="8" y="13" width="18" height="6" fill="currentColor" />
         <rect x="14" y="22" width="16" height="6" fill="#ec3013" />
       </svg>
-      {wordmark && <span className="font-extrabold tracking-[-0.02em]" style={{ fontSize: size * 0.72 }}>Stackflow</span>}
+      {wordmark && <span className="font-display font-extrabold tracking-[-0.02em]" style={{ fontSize: size * 0.72 }}>Stackflow</span>}
     </span>
   );
 }

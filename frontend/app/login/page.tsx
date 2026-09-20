@@ -28,7 +28,7 @@ export default function LoginPage() {
         <Logo size={30} />
         <div>
           <div className="mb-3.5 flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-accent"><span className="h-2 w-2 bg-accent animate-pulse2" />Open-source kanban</div>
-          <h1 className="mb-[18px] text-[clamp(40px,6.5vw,76px)] font-extrabold leading-[0.98] tracking-[-0.035em] [text-wrap:balance]">Move work.<br />Nothing else.</h1>
+          <h1 className="mb-[18px] font-display text-[clamp(40px,6.5vw,76px)] font-extrabold leading-[0.98] tracking-[-0.035em] [text-wrap:balance]">Move work.<br />Nothing else.</h1>
           <p className="max-w-[36ch] text-base text-muted [text-wrap:pretty]">Four columns, a few cards, one drag. The whole app fits on one screen — and looks good doing it.</p>
         </div>
         <form onSubmit={submit} className="flex flex-col gap-3.5">
