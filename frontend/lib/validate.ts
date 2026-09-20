@@ -1,0 +1,78 @@
+import type { CardInput } from "./types";
+
+// Server-side input validation for card writes. Enum sets mirror
+// frontend/lib/types.ts. Returns a discriminated result so routes can answer
+// 400 on bad input instead of throwing / crashing.
+
+export const LABELS = ["bug", "feature", "docs"] as const;
+export const PRIORITIES = ["high", "med", "low"] as const;
+export const COLUMNS = ["todo", "progress", "blocked", "done"] as const;
+
+type Ok<T> = { ok: true; value: T };
+type Err = { ok: false; error: string };
+export type Result<T> = Ok<T> | Err;
+
+const isEnum = <T extends readonly string[]>(set: T, v: unknown): v is T[number] =>
+  typeof v === "string" && (set as readonly string[]).includes(v);
+
+/** Validate a full CardInput (POST /api/cards). */
+export function validateCardInput(body: unknown): Result<CardInput> {
+  if (typeof body !== "object" || body === null) return { ok: false, error: "Body must be a JSON object" };
+  const b = body as Record<string, unknown>;
+
+  if (typeof b.title !== "string" || b.title.trim() === "") return { ok: false, error: "title is required" };
+  if (b.description !== undefined && typeof b.description !== "string") return { ok: false, error: "description must be a string" };
+  if (!isEnum(LABELS, b.label)) return { ok: false, error: `label must be one of ${LABELS.join(", ")}` };
+  if (!isEnum(PRIORITIES, b.priority)) return { ok: false, error: `priority must be one of ${PRIORITIES.join(", ")}` };
+  if (b.column !== undefined && !isEnum(COLUMNS, b.column)) return { ok: false, error: `column must be one of ${COLUMNS.join(", ")}` };
+
+  return {
+    ok: true,
+    value: {
+      title: b.title.trim(),
+      description: typeof b.description === "string" ? b.description : "",
+      label: b.label,
+      priority: b.priority,
+      column: (b.column ?? "todo") as CardInput["column"],
+    },
+  };
+}
+
+/** Validate a partial CardInput (PATCH /api/cards/[id]) — only provided fields. */
+export function validateCardPatch(body: unknown): Result<Partial<CardInput>> {
+  if (typeof body !== "object" || body === null) return { ok: false, error: "Body must be a JSON object" };
+  const b = body as Record<string, unknown>;
+  const patch: Partial<CardInput> = {};
+
+  if (b.title !== undefined) {
+    if (typeof b.title !== "string" || b.title.trim() === "") return { ok: false, error: "title must be a non-empty string" };
+    patch.title = b.title.trim();
+  }
+  if (b.description !== undefined) {
+    if (typeof b.description !== "string") return { ok: false, error: "description must be a string" };
+    patch.description = b.description;
+  }
+  if (b.label !== undefined) {
+    if (!isEnum(LABELS, b.label)) return { ok: false, error: `label must be one of ${LABELS.join(", ")}` };
+    patch.label = b.label;
+  }
+  if (b.priority !== undefined) {
+    if (!isEnum(PRIORITIES, b.priority)) return { ok: false, error: `priority must be one of ${PRIORITIES.join(", ")}` };
+    patch.priority = b.priority;
+  }
+  if (b.column !== undefined) {
+    if (!isEnum(COLUMNS, b.column)) return { ok: false, error: `column must be one of ${COLUMNS.join(", ")}` };
+    patch.column = b.column;
+  }
+
+  if (Object.keys(patch).length === 0) return { ok: false, error: "No valid fields to update" };
+  return { ok: true, value: patch };
+}
+
+/** Validate the { column } body for POST /api/cards/[id]/move. */
+export function validateColumn(body: unknown): Result<CardInput["column"]> {
+  if (typeof body !== "object" || body === null) return { ok: false, error: "Body must be a JSON object" };
+  const col = (body as Record<string, unknown>).column;
+  if (!isEnum(COLUMNS, col)) return { ok: false, error: `column must be one of ${COLUMNS.join(", ")}` };
+  return { ok: true, value: col };
+}
