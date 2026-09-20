@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { toCard } from "@/lib/serialize";
-import { canEdit, canDelete } from "@/lib/rbac";
+import { canEdit, canDelete, canAssign } from "@/lib/rbac";
 import { validateCardPatch } from "@/lib/validate";
 
 type Params = { params: { id: string } };
 
-// PATCH /api/cards/[id] -> Card  (admin OR owner; else 403)
+// PATCH /api/cards/[id] -> Card
+// Editing: admin edits any card, a member only their own (else 403). Reassigning
+// (changing ownerId) is admin-only. Members may still toggle needsHelp on their
+// own card because that is just editing a field they own.
 export async function PATCH(request: Request, { params }: Params) {
   const user = await getSession();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -25,6 +28,15 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const parsed = validateCardPatch(body);
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+
+  // Reassignment guard: only admins may change ownerId, and only to an existing user.
+  if (parsed.value.ownerId !== undefined && parsed.value.ownerId !== card.ownerId) {
+    if (!canAssign(user)) {
+      return NextResponse.json({ error: "Members cannot reassign cards to other users" }, { status: 403 });
+    }
+    const target = await prisma.user.findUnique({ where: { id: parsed.value.ownerId } });
+    if (!target) return NextResponse.json({ error: "Assignee not found" }, { status: 400 });
+  }
 
   const updated = await prisma.card.update({ where: { id: params.id }, data: parsed.value });
   return NextResponse.json(toCard(updated));
