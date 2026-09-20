@@ -1,0 +1,58 @@
+// Stackflow backend schema.
+// Enum values are the exact lowercase strings the frontend uses in
+// frontend/lib/types.ts, so they serialize straight to JSON with no mapping.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String @id @default(cuid())
+  name         String
+  initials     String
+  email        String @unique
+  passwordHash String
+  role         Role   @default(member)
+  cards        Card[]
+}
+
+model Card {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @default("")
+  label       Label
+  priority    Priority
+  column      Column   @default(todo)
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+enum Role {
+  admin
+  member
+}
+
+enum Label {
+  bug
+  feature
+  docs
+}
+
+enum Priority {
+  high
+  med
+  low
+}
+
+enum Column {
+  todo
+  progress
+  blocked
+  done
+}
