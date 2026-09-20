@@ -1,7 +1,7 @@
 "use client";
 import { useDraggable } from "@dnd-kit/core";
 import { motion } from "framer-motion";
-import { Lock, Trash2 } from "lucide-react";
+import { HelpCircle, Lock, Trash2 } from "lucide-react";
 import { PRIORITIES } from "@/lib/tokens";
 import type { Card as CardT, User } from "@/lib/types";
 import { Avatar, LabelTag, PriorityDot } from "./Primitives";
@@ -16,7 +16,10 @@ export function CardFace({ card, owner, canMove, canDelete, showDescription = tr
   return (
     <>
       <div className="flex items-center justify-between gap-2">
-        <LabelTag id={card.label} />
+        <span className="inline-flex items-center gap-1.5">
+          <LabelTag id={card.label} />
+          {card.needsHelp && <HelpCircle size={13} className="text-accent-soft" aria-label="Needs help" />}
+        </span>
         {canDelete && !ghost && (
           <button type="button" title="Delete card" onClick={(e) => { e.stopPropagation(); onDelete?.(card.id); }} onPointerDown={(e) => e.stopPropagation()}
             className="grid h-[26px] w-[26px] place-items-center text-faint hover:text-accent"><Trash2 size={14} /></button>

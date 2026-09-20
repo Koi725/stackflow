@@ -1,16 +1,17 @@
 "use client";
-import { Lock, Pencil, Trash2 } from "lucide-react";
+import { HelpCircle, Lock, Pencil, Trash2 } from "lucide-react";
 import { COLUMNS, PRIORITIES } from "@/lib/tokens";
 import type { Card, ColumnId, User } from "@/lib/types";
 import { Kicker, Modal, ModalFooter, ModalHeader } from "./Modal";
 import { Avatar, LabelTag, PriorityDot } from "./Primitives";
 import { Seg } from "./Seg";
 
-const fmt = new Intl.DateTimeFormat("en", { month: "short", day: "numeric" });
+const fmt = new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" });
 
-export function CardDetail({ card, owner, canEdit, canDelete, onClose, onMove, onEdit, onDelete }: {
+export function CardDetail({ card, owner, canEdit, canDelete, onClose, onMove, onEdit, onDelete, onToggleHelp }: {
   card: Card | null; owner?: User; canEdit: boolean; canDelete: boolean;
   onClose: () => void; onMove: (col: ColumnId) => void; onEdit: () => void; onDelete: () => void;
+  onToggleHelp: (needsHelp: boolean) => void;
 }) {
   return (
     <Modal open={!!card} onClose={onClose} sheet width={640} accentTop={card ? PRIORITIES[card.priority].hex : undefined}>
@@ -32,6 +33,14 @@ export function CardDetail({ card, owner, canEdit, canDelete, onClose, onMove, o
               <div><Kicker>Move to</Kicker><Seg value={card.column} onChange={onMove} options={COLUMNS.map((c) => ({ id: c.id, label: c.name }))} /></div>
             ) : (
               <div className="flex items-center gap-2.5 border border-ink/20 px-3.5 py-3 text-[13px] text-muted"><Lock size={14} />This card belongs to {owner.name}. Only they or an admin can change it.</div>
+            )}
+            {canEdit && (
+              <div><Kicker>Help</Kicker>
+                <button type="button" onClick={() => onToggleHelp(!card.needsHelp)}
+                  className={`inline-flex min-h-[40px] items-center gap-2 border px-3.5 text-[13px] font-semibold transition-colors ${card.needsHelp ? "border-accent bg-accent/15 text-accent-soft hover:bg-accent/20" : "border-rule text-muted hover:bg-ink/[.08]"}`}>
+                  <HelpCircle size={15} />{card.needsHelp ? "Needs help — tap to clear" : "Ask for help"}
+                </button>
+              </div>
             )}
           </div>
           <ModalFooter>
