@@ -12,12 +12,15 @@ datasource db {
 }
 
 model User {
-  id           String @id @default(cuid())
+  id           String  @id @default(cuid())
   name         String
   initials     String
-  email        String @unique
-  passwordHash String
-  role         Role   @default(member)
+  email        String  @unique
+  // Nullable: users mirrored from an external auth provider (AUTH_MODE=darsman)
+  // never have a stackflow password — identity is verified upstream. Local
+  // (AUTH_MODE=local) users always have a bcrypt hash here.
+  passwordHash String?
+  role         Role    @default(member)
   cards        Card[]
 }
 
@@ -28,8 +31,12 @@ model Card {
   label       Label
   priority    Priority
   column      Column   @default(todo)
+  // ownerId is the assignee — the user the card is assigned to. Admins may
+  // reassign it (set it to anyone); members can only own their own cards.
   ownerId     String
   owner       User     @relation(fields: [ownerId], references: [id])
+  // A member can raise a hand for help on their own card; admins can see it.
+  needsHelp   Boolean  @default(false)
   createdAt   DateTime @default(now())
 }
 
