@@ -5,7 +5,8 @@ import type { Card, LabelId } from "@/lib/types";
 import { Kicker, Modal, ModalHeader } from "./Modal";
 import { LabelTag } from "./Primitives";
 
-/** Admin only. "Add column/label" are UI placeholders — columns and labels are static in lib/tokens.ts (see README › Mocks #6). */
+/** Admin only. Columns and labels are fixed enums defined in lib/tokens.ts; the
+ *  "Add column/label" buttons are intentionally inert placeholders for now. */
 export function ManagePanel({ open, cards, onClose }: { open: boolean; cards: Card[]; onClose: () => void }) {
   const Section = ({ title }: { title: string }) => <div className="mb-2.5 border-b-2 border-rule pb-2"><Kicker>{title}</Kicker></div>;
   const AddBtn = ({ label }: { label: string }) => (
