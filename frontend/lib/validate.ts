@@ -12,11 +12,15 @@ type Ok<T> = { ok: true; value: T };
 type Err = { ok: false; error: string };
 export type Result<T> = Ok<T> | Err;
 
+// The two RBAC-sensitive fields (assignment + help flag) travel with card writes
+// but are gated in the routes, not here — validation only checks their shape.
+export type CardWrite = CardInput & { ownerId?: string; needsHelp?: boolean };
+
 const isEnum = <T extends readonly string[]>(set: T, v: unknown): v is T[number] =>
   typeof v === "string" && (set as readonly string[]).includes(v);
 
-/** Validate a full CardInput (POST /api/cards). */
-export function validateCardInput(body: unknown): Result<CardInput> {
+/** Validate a full card write (POST /api/cards). */
+export function validateCardInput(body: unknown): Result<CardWrite> {
   if (typeof body !== "object" || body === null) return { ok: false, error: "Body must be a JSON object" };
   const b = body as Record<string, unknown>;
 
@@ -25,6 +29,8 @@ export function validateCardInput(body: unknown): Result<CardInput> {
   if (!isEnum(LABELS, b.label)) return { ok: false, error: `label must be one of ${LABELS.join(", ")}` };
   if (!isEnum(PRIORITIES, b.priority)) return { ok: false, error: `priority must be one of ${PRIORITIES.join(", ")}` };
   if (b.column !== undefined && !isEnum(COLUMNS, b.column)) return { ok: false, error: `column must be one of ${COLUMNS.join(", ")}` };
+  if (b.ownerId !== undefined && (typeof b.ownerId !== "string" || b.ownerId.trim() === "")) return { ok: false, error: "ownerId must be a non-empty string" };
+  if (b.needsHelp !== undefined && typeof b.needsHelp !== "boolean") return { ok: false, error: "needsHelp must be a boolean" };
 
   return {
     ok: true,
@@ -34,15 +40,17 @@ export function validateCardInput(body: unknown): Result<CardInput> {
       label: b.label,
       priority: b.priority,
       column: (b.column ?? "todo") as CardInput["column"],
+      ...(typeof b.ownerId === "string" ? { ownerId: b.ownerId } : {}),
+      ...(typeof b.needsHelp === "boolean" ? { needsHelp: b.needsHelp } : {}),
     },
   };
 }
 
-/** Validate a partial CardInput (PATCH /api/cards/[id]) — only provided fields. */
-export function validateCardPatch(body: unknown): Result<Partial<CardInput>> {
+/** Validate a partial card write (PATCH /api/cards/[id]) — only provided fields. */
+export function validateCardPatch(body: unknown): Result<Partial<CardWrite>> {
   if (typeof body !== "object" || body === null) return { ok: false, error: "Body must be a JSON object" };
   const b = body as Record<string, unknown>;
-  const patch: Partial<CardInput> = {};
+  const patch: Partial<CardWrite> = {};
 
   if (b.title !== undefined) {
     if (typeof b.title !== "string" || b.title.trim() === "") return { ok: false, error: "title must be a non-empty string" };
@@ -63,6 +71,14 @@ export function validateCardPatch(body: unknown): Result<Partial<CardInput>> {
   if (b.column !== undefined) {
     if (!isEnum(COLUMNS, b.column)) return { ok: false, error: `column must be one of ${COLUMNS.join(", ")}` };
     patch.column = b.column;
+  }
+  if (b.ownerId !== undefined) {
+    if (typeof b.ownerId !== "string" || b.ownerId.trim() === "") return { ok: false, error: "ownerId must be a non-empty string" };
+    patch.ownerId = b.ownerId;
+  }
+  if (b.needsHelp !== undefined) {
+    if (typeof b.needsHelp !== "boolean") return { ok: false, error: "needsHelp must be a boolean" };
+    patch.needsHelp = b.needsHelp;
   }
 
   if (Object.keys(patch).length === 0) return { ok: false, error: "No valid fields to update" };

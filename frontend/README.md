@@ -95,6 +95,41 @@ Derived from the Modernist system (Archivo, ink/red, zero radius, 2px rules) fli
 | Manage columns & labels | ✓ | ✗ |
 | Header hint bar | — | "Drag your own cards. Teammates' cards are read-only." |
 
+## Authentication (backend)
+Auth is pluggable via the `AUTH_MODE` env var; the provider layer lives in `lib/auth/`.
+
+- **`local` (default, public path)** — credentials are checked against stackflow's
+  own `User` table with bcrypt. This is the normal way to run the app: create users
+  (see the seed) and sign in. Nothing external is required.
+- **`darsman` (optional external mode)** — for private deployments that want to
+  reuse an existing identity platform. Credentials are forwarded to an external
+  login endpoint whose URL comes entirely from `DARSMAN_AUTH_URL` (never hardcoded);
+  on success stackflow mirrors the returned profile (name, role) into its own `User`
+  table and stores **no** password for that user. External roles are mapped to
+  stackflow's two roles on every login (e.g. an elevated external role → `admin`,
+  a standard one → `member`).
+
+Either way the session is always minted from — and reloaded from — stackflow's own
+DB, so the client can never assert its own identity or role. To enable the optional
+mode set `AUTH_MODE=darsman` and `DARSMAN_AUTH_URL`; if the URL is missing the app
+fails clearly instead of falling back.
+
+## Server-side RBAC (backend)
+Enforced in the API routes against the session user loaded from the DB — the
+frontend `lib/permissions.ts` copy is UX only.
+
+| Capability | Admin | Member |
+|---|---|---|
+| View cards | all | only their own (`GET /api/cards` filters) |
+| Create | ✓ (may assign `ownerId` to anyone) | ✓ (owner forced to self) |
+| Edit / move | any card | own cards only |
+| Reassign (change `ownerId`) | ✓ | ✗ (403) |
+| Delete | ✓ | ✗ (403) |
+| Toggle `needsHelp` | any card | own card only |
+
+`needsHelp` is a per-card flag a member can raise on their own card to ask for help;
+admins can see it on every card.
+
 ## Mocks & placeholders — wire these before shipping
 1. **`lib/mock.ts`** + the `catch` fallback in **`app/board/page.tsx`** — 8 sample cards + 3 users load whenever the API fails. Delete both once `lib/api.ts` talks to a real DB (redirect to `/login` on 401 instead).
 2. **`lib/api.ts`** — every function is a `fetch` to `/api/...` routes that **do not exist yet**. Implement them (Prisma/Drizzle + Postgres, or Supabase). Shapes are in `lib/types.ts`.

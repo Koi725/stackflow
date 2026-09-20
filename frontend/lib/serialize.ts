@@ -19,6 +19,7 @@ export function toCard(c: DbCard): Card {
     priority: c.priority,
     column: c.column,
     ownerId: c.ownerId,
+    needsHelp: c.needsHelp,
     createdAt: c.createdAt.toISOString(),
   };
 }

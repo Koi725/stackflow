@@ -12,7 +12,8 @@ export interface Card {
   label: LabelId;
   priority: Priority;
   column: ColumnId;
-  ownerId: string;
+  ownerId: string; // the assignee — who the card is assigned to
+  needsHelp?: boolean; // owner raised a hand for help; admins can see it (always set by the API)
   createdAt: string; // ISO
 }
 
