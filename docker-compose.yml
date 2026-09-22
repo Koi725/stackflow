@@ -23,8 +23,17 @@ services:
     # Not published — only reachable by the app service on the internal network.
     # db stays on the private stackflow network ONLY: never on the darsman
     # network, never exposed to the host.
+    #
+    # A UNIQUE alias `stackflow-db` is published on the internal network. The app
+    # connects via this alias (DATABASE_URL=@stackflow-db:5432), NOT the bare
+    # service name `db`: because the app also joins the shared darsman network,
+    # the generic name `db` could resolve to darsman's own Postgres (darsman-db-1)
+    # and cause migrations to hit the WRONG database (P1000). `stackflow-db` exists
+    # only on the internal network, so it can never collide.
     networks:
-      - internal
+      internal:
+        aliases:
+          - stackflow-db
 
   app:
     build:
