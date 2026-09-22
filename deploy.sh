@@ -31,7 +31,11 @@ echo "==> [5/6] Applying database migrations"
 # One-shot: run `prisma migrate deploy` in a throwaway app container. Compose
 # starts the db dependency and waits for it to be healthy first. This keeps the
 # app's runtime CMD clean (just `node server.js`) and the migration step explicit.
-docker compose run --rm app npx prisma migrate deploy
+#
+# Invoke the CLI by its REAL package entry, NOT `npx prisma` / the .bin symlink:
+# build/index.js loads sibling assets (prisma_schema_build_bg.wasm) relative to its
+# own __dirname, so it must run from node_modules/prisma/build/ directly.
+docker compose run --rm app node node_modules/prisma/build/index.js migrate deploy
 
 echo "==> [6/6] Starting the stack"
 docker compose up -d
@@ -41,6 +45,9 @@ docker compose ps
 
 # ---------------------------------------------------------------------------
 # One-time seeding (NOT run automatically — do this by hand the first time only):
-#   docker compose run --rm app npx prisma db seed
-# It reads SEED_ADMIN_PASSWORD / SEED_MEMBER_PASSWORD from .env.
+#   docker compose run --rm app node prisma/seed.js
+# Run the compiled seed DIRECTLY — it only needs @prisma/client + bcryptjs (both
+# traced into the standalone bundle), so it does NOT need the prisma CLI at all
+# (the CLI's `db seed` merely shells out to this same file). It reads
+# SEED_ADMIN_PASSWORD / SEED_MEMBER_PASSWORD from .env.
 # ---------------------------------------------------------------------------
