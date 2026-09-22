@@ -7,7 +7,14 @@ import "./globals.css";
 // for a calm, highly-readable, Telegram/native feel.
 const archivo = Archivo({ subsets: ["latin"], weight: ["800"], variable: "--font-archivo", display: "swap" });
 
-export const metadata: Metadata = { title: "Stackflow", description: "Move work. Nothing else." };
+export const metadata: Metadata = {
+  title: "Stackflow",
+  description: "Move work. Nothing else.",
+  // Private tool — must never be indexed. Next renders this as
+  // <meta name="robots" content="noindex, nofollow"> in every page's <head>.
+  // Belt-and-suspenders with app/robots.ts and the X-Robots-Tag header.
+  robots: { index: false, follow: false },
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

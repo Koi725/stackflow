@@ -21,6 +21,10 @@ services:
       retries: 5
       start_period: 10s
     # Not published — only reachable by the app service on the internal network.
+    # db stays on the private stackflow network ONLY: never on the darsman
+    # network, never exposed to the host.
+    networks:
+      - internal
 
   app:
     build:
@@ -45,7 +49,34 @@ services:
     ports:
       # Bound to loopback only. nginx (host) proxies to 127.0.0.1:3400.
       - "127.0.0.1:3400:3000"
+    networks:
+      # `internal` = private app<->db link (below). `darsman` = the darsman
+      # stack's EXISTING network, joined so the app can reach the darsman backend
+      # by container name (see DARSMAN_AUTH_URL in .env.example):
+      #   http://darsman-backend-1:8000/api/auth/login
+      - internal
+      - darsman
 
 volumes:
   pgdata: # PostgreSQL data — persists across deploys
   avatars: # uploaded user avatars — persists across deploys
+
+networks:
+  # Private network for app<->db only. Not attached to db's host, never exposed.
+  internal:
+    driver: bridge
+
+  # The darsman stack's OWN network, referenced here as EXTERNAL (Compose will NOT
+  # create it — it must already exist, created by the darsman compose project).
+  #
+  # `name:` is the network's real name on the server. Compose names a project's
+  # default network "<project>_default", so a darsman stack in a ./darsman dir
+  # yields "darsman_default" — the most likely value, set below.
+  #
+  # !! VERIFY ON THE SERVER before building:  docker network ls
+  #    If the darsman project dir / network name differs, change `name:` to match.
+  #    (Also confirm the backend container name with `docker ps` — this compose
+  #    assumes "darsman-backend-1"; adjust DARSMAN_AUTH_URL in .env if it differs.)
+  darsman:
+    external: true
+    name: darsman_default
