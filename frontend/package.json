@@ -10,11 +10,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "seed:build": "esbuild prisma/seed.ts --platform=node --format=cjs --outfile=prisma/seed.js",
-    "db:seed": "npm run seed:build && prisma db seed"
-  },
-  "prisma": {
-    "//": "Seed runs the compiled prisma/seed.js with plain node, so no tsx is needed in the production runner. `npm run db:seed` compiles it first (see seed:build); the Docker build compiles it in the builder stage.",
-    "seed": "node prisma/seed.js"
+    "db:seed": "npm run seed:build && node prisma/seed.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
