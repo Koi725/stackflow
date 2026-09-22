@@ -22,10 +22,20 @@ RUN npx prisma generate
 RUN npm run build
 
 # Compile the TypeScript seed to a plain CommonJS file so the slim runner can run
-# it with `node` — no tsx (a devDependency) is needed at deploy time. Imports
-# (@prisma/client, bcryptjs) are left external and resolve at runtime from the
-# traced standalone node_modules. esbuild is already present here via tsx.
-RUN npx esbuild prisma/seed.ts --platform=node --format=cjs --outfile=prisma/seed.js
+# it with `node` — no tsx (a devDependency) is needed at deploy time. esbuild is
+# already present here via tsx.
+#
+# --bundle inlines bcryptjs into the output: Next's build webpacks bcryptjs into
+# the server chunks rather than leaving it in the traced standalone node_modules,
+# so a bare `require("bcryptjs")` from the seed would fail with "Cannot find
+# module 'bcryptjs'". Bundling makes the seed self-contained for that dep.
+#
+# @prisma/client is kept EXTERNAL on purpose: bundling it breaks Prisma's native
+# query-engine loader (it looks for libquery_engine-*.node next to the bundle).
+# Left external, it resolves at runtime from node_modules/@prisma/client (copied
+# into the runner below) where the engine loads correctly.
+RUN npx esbuild prisma/seed.ts --bundle --platform=node --format=cjs \
+    --external:@prisma/client --outfile=prisma/seed.js
 
 # ---------- Runtime stage ----------
 FROM node:20-alpine AS runner
