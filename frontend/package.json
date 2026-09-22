@@ -9,7 +9,7 @@
     "lint": "next lint",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "seed:build": "esbuild prisma/seed.ts --platform=node --format=cjs --outfile=prisma/seed.js",
+    "seed:build": "esbuild prisma/seed.ts --bundle --platform=node --format=cjs --external:@prisma/client --outfile=prisma/seed.js",
     "db:seed": "npm run seed:build && node prisma/seed.js"
   },
   "dependencies": {
