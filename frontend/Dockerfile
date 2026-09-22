@@ -49,20 +49,17 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-# Prisma schema + migrations + the compiled seed (prisma/seed.js), plus the CLI
-# and engines (which the traced standalone node_modules does NOT include).
+# Prisma schema + migrations + the compiled seed (prisma/seed.js), plus the FULL
+# CLI package and engines (which the traced standalone node_modules does NOT
+# include). Migrations are invoked by running the real package entry directly:
+#   node node_modules/prisma/build/index.js migrate deploy
+# The full node_modules/prisma package must stay intact — its build/index.js loads
+# sibling assets (prisma_schema_build_bg.wasm etc.) by __dirname, so it MUST be run
+# from its real path, never via a copied .bin symlink (which breaks those siblings).
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-# The `prisma` executable symlink (-> ../prisma/build/index.js). This is what
-# `npx prisma` resolves from node_modules/.bin; without it, npx can't find the
-# CLI locally and fails with "prisma: not found". Copied as a symlink; its target
-# is the prisma package copied just above, so it resolves inside the runner.
-COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
-# The real package.json (the Next standalone output writes a minimal one that has
-# no `prisma.seed` key). `prisma db seed` reads the seed command from here.
-COPY --from=builder /app/package.json ./package.json
 
 # Create the avatar upload dir and hand the app tree to the non-root user. Because
 # this dir is created + chowned in the image, a fresh named volume mounted here
