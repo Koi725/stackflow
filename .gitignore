@@ -13,6 +13,10 @@ yarn-error.log*
 .pnpm-debug.log*
 next-env.d.ts
 
+# Compiled seed artifact (generated from prisma/seed.ts by the seed:build script
+# and by the Docker builder stage). Never committed.
+frontend/prisma/seed.js
+
 # ---- Python ----
 __pycache__/
 *.py[cod]
