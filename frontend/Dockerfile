@@ -21,6 +21,12 @@ COPY . .
 RUN npx prisma generate
 RUN npm run build
 
+# Compile the TypeScript seed to a plain CommonJS file so the slim runner can run
+# it with `node` — no tsx (a devDependency) is needed at deploy time. Imports
+# (@prisma/client, bcryptjs) are left external and resolve at runtime from the
+# traced standalone node_modules. esbuild is already present here via tsx.
+RUN npx esbuild prisma/seed.ts --platform=node --format=cjs --outfile=prisma/seed.js
+
 # ---------- Runtime stage ----------
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -43,12 +49,20 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-# Prisma schema + migrations (needed by `migrate deploy`), plus the CLI and engines
-# (which the traced standalone node_modules does NOT include).
+# Prisma schema + migrations + the compiled seed (prisma/seed.js), plus the CLI
+# and engines (which the traced standalone node_modules does NOT include).
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+# The `prisma` executable symlink (-> ../prisma/build/index.js). This is what
+# `npx prisma` resolves from node_modules/.bin; without it, npx can't find the
+# CLI locally and fails with "prisma: not found". Copied as a symlink; its target
+# is the prisma package copied just above, so it resolves inside the runner.
+COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+# The real package.json (the Next standalone output writes a minimal one that has
+# no `prisma.seed` key). `prisma db seed` reads the seed command from here.
+COPY --from=builder /app/package.json ./package.json
 
 # Create the avatar upload dir and hand the app tree to the non-root user. Because
 # this dir is created + chowned in the image, a fresh named volume mounted here
