@@ -13,6 +13,16 @@ function requireEnv(name: string): string {
 }
 
 async function main() {
+  // Refuse to seed local-password accounts in darsman mode: identities are
+  // provisioned by the external provider on first login, so seeding an admin/member
+  // with a bcrypt password here would be a backdoor around darsman auth.
+  if ((process.env.AUTH_MODE ?? "local").trim().toLowerCase() === "darsman") {
+    throw new Error(
+      "AUTH_MODE=darsman: refusing to seed local-password accounts (would bypass darsman auth). " +
+        "Seed only in AUTH_MODE=local deployments.",
+    );
+  }
+
   const adminPassword = requireEnv("SEED_ADMIN_PASSWORD");
   const memberPassword = requireEnv("SEED_MEMBER_PASSWORD");
   const adminHash = await bcrypt.hash(adminPassword, 10);
