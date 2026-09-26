@@ -30,17 +30,40 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  // Served exclusively over HTTPS (Let's Encrypt via nginx). Pin HTTPS for 2y
+  // across subdomains so a first-visit downgrade/SSL-strip can't reach the app.
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
   // Private tool — must never be indexed. Belt-and-suspenders with app/robots.ts
   // and the <meta name="robots"> tag in app/layout.tsx.
   { key: "X-Robots-Tag", value: "noindex, nofollow" },
+];
+
+// API responses are per-user and must never be cached by the CDN (WCDN). no-store
+// + Vary: Cookie prevent cache poisoning/deception (e.g. /api/cards?x=.jpg) from
+// ever serving one user's data to another. The avatar SERVE route is excluded:
+// it sets its own `Cache-Control: private, max-age=3600` on immutable UUID files,
+// so applying no-store here would clobber that. The negative lookahead matches
+// every /api/* path EXCEPT those under /api/avatar/.
+const apiNoStoreHeaders = [
+  { key: "Cache-Control", value: "no-store" },
+  { key: "Vary", value: "Cookie" },
 ];
 
 const nextConfig = {
   // Emit a self-contained server bundle (.next/standalone/server.js) so the
   // production image can run without dev dependencies or a full node_modules.
   output: "standalone",
+  experimental: {
+    // Required on Next 14 for instrumentation.ts register() to run at startup
+    // (SESSION_SECRET / AUTH_MODE validation). Stable/default in Next 15+.
+    instrumentationHook: true,
+  },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Every /api/* route except /api/avatar/* gets no-store + Vary: Cookie.
+      { source: "/api/:path((?!avatar/).*)", headers: apiNoStoreHeaders },
+    ];
   },
 };
 

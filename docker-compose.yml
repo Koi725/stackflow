@@ -8,6 +8,17 @@ services:
   db:
     image: postgres:16
     restart: unless-stopped
+    # Conservative caps so a runaway query/leak here can't starve the shared host
+    # (which also runs darsman production). Tune up only if Postgres needs it.
+    mem_limit: 512m
+    cpus: "0.50"
+    pids_limit: 256
+    # Bound container log growth so stdout/stderr can't fill the host disk.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -40,6 +51,17 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     restart: unless-stopped
+    # Conservative caps so an app-side spike (e.g. bcrypt/CPU or a memory leak)
+    # can't exhaust the shared host and take down the co-located darsman prod app.
+    mem_limit: 512m
+    cpus: "0.50"
+    pids_limit: 256
+    # Bound container log growth so stdout/stderr can't fill the host disk.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       db:
         condition: service_healthy
