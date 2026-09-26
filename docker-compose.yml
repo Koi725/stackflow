@@ -59,12 +59,18 @@ services:
       # Bound to loopback only. nginx (host) proxies to 127.0.0.1:3400.
       - "127.0.0.1:3400:3000"
     networks:
-      # `internal` = private app<->db link (below). `darsman` = the darsman
-      # stack's EXISTING network, joined so the app can reach the darsman backend
-      # by container name (see DARSMAN_AUTH_URL in .env.example):
+      # `internal` = private app<->db link (below). `darsman-auth` = a DEDICATED,
+      # minimal-blast-radius network shared with ONLY darsman-backend-1, joined so
+      # the app can reach the backend by container name for auth (DARSMAN_AUTH_URL):
       #   http://darsman-backend-1:8000/api/auth/login
+      #
+      # We deliberately do NOT join darsman's full `darsman_default` network: on a
+      # bridge network every container can reach every other on all ports, which
+      # would give stackflow direct reach to darsman-db-1:5432 and every other
+      # darsman container. Scoping to a two-member network means the only thing
+      # stackflow can reach on the darsman side is the backend's auth port.
       - internal
-      - darsman
+      - darsman-auth
 
 volumes:
   pgdata: # PostgreSQL data — persists across deploys
@@ -75,17 +81,20 @@ networks:
   internal:
     driver: bridge
 
-  # The darsman stack's OWN network, referenced here as EXTERNAL (Compose will NOT
-  # create it — it must already exist, created by the darsman compose project).
+  # Dedicated auth-only network shared with darsman-backend-1 ONLY. Referenced as
+  # EXTERNAL (Compose will NOT create it) and owned by NEITHER compose project, so
+  # it survives a redeploy (`docker compose down`/`up`) of stackflow OR darsman.
   #
-  # `name:` is the network's real name on the server. Compose names a project's
-  # default network "<project>_default", so a darsman stack in a ./darsman dir
-  # yields "darsman_default" — the most likely value, set below.
+  # Create it ONCE, out-of-band, on the server:
+  #   docker network create darsman-auth
+  # Then attach darsman-backend-1 to it (see darsman's compose change on deploy).
   #
-  # !! VERIFY ON THE SERVER before building:  docker network ls
-  #    If the darsman project dir / network name differs, change `name:` to match.
-  #    (Also confirm the backend container name with `docker ps` — this compose
-  #    assumes "darsman-backend-1"; adjust DARSMAN_AUTH_URL in .env if it differs.)
-  darsman:
+  # Blast-radius rationale: this replaces stackflow's former membership in
+  # darsman's full `darsman_default` network. Only stackflow-app and
+  # darsman-backend-1 join `darsman-auth`, so stackflow can reach the backend's
+  # auth port but has NO route to darsman-db-1:5432 or any other darsman service.
+  # If the network is absent, `app` fails to start (fail-safe) rather than falling
+  # back to a broader network.
+  darsman-auth:
     external: true
-    name: darsman_default
+    name: darsman-auth
