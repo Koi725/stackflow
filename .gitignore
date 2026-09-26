@@ -40,3 +40,4 @@ venv/
 # ---- Uploaded files (user avatars, stored outside /public) ----
 var/
 uploads/
+frontend/tsconfig.tsbuildinfo
