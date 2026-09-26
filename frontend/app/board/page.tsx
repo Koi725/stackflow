@@ -5,6 +5,12 @@ import { Board } from "@/components/Board";
 import { api, ApiError } from "@/lib/api";
 import type { Card, User } from "@/lib/types";
 
+// Never statically prerender or CDN-cache this page: it's an authenticated,
+// per-user view. force-dynamic makes Next render it per-request and emit
+// Cache-Control: no-store, so the WCDN can't cache and serve a stale shell.
+// The middleware.ts matcher is the actual auth guard (307 → /login).
+export const dynamic = "force-dynamic";
+
 export default function BoardPage() {
   const router = useRouter();
   const [data, setData] = useState<{ user: User; members: User[]; cards: Card[] } | null>(null);
