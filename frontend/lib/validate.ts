@@ -8,6 +8,11 @@ export const LABELS = ["bug", "feature", "docs"] as const;
 export const PRIORITIES = ["high", "med", "low"] as const;
 export const COLUMNS = ["todo", "progress", "blocked", "done"] as const;
 
+// Upper bounds on free-text card fields so an unbounded string can't be persisted
+// or re-rendered (mirrors the 80-char profile-name bound below).
+export const MAX_TITLE_LEN = 200;
+export const MAX_DESCRIPTION_LEN = 5000;
+
 type Ok<T> = { ok: true; value: T };
 type Err = { ok: false; error: string };
 export type Result<T> = Ok<T> | Err;
@@ -25,7 +30,9 @@ export function validateCardInput(body: unknown): Result<CardWrite> {
   const b = body as Record<string, unknown>;
 
   if (typeof b.title !== "string" || b.title.trim() === "") return { ok: false, error: "title is required" };
+  if (b.title.trim().length > MAX_TITLE_LEN) return { ok: false, error: `title must be ${MAX_TITLE_LEN} characters or fewer` };
   if (b.description !== undefined && typeof b.description !== "string") return { ok: false, error: "description must be a string" };
+  if (typeof b.description === "string" && b.description.length > MAX_DESCRIPTION_LEN) return { ok: false, error: `description must be ${MAX_DESCRIPTION_LEN} characters or fewer` };
   if (!isEnum(LABELS, b.label)) return { ok: false, error: `label must be one of ${LABELS.join(", ")}` };
   if (!isEnum(PRIORITIES, b.priority)) return { ok: false, error: `priority must be one of ${PRIORITIES.join(", ")}` };
   if (b.column !== undefined && !isEnum(COLUMNS, b.column)) return { ok: false, error: `column must be one of ${COLUMNS.join(", ")}` };
@@ -54,10 +61,12 @@ export function validateCardPatch(body: unknown): Result<Partial<CardWrite>> {
 
   if (b.title !== undefined) {
     if (typeof b.title !== "string" || b.title.trim() === "") return { ok: false, error: "title must be a non-empty string" };
+    if (b.title.trim().length > MAX_TITLE_LEN) return { ok: false, error: `title must be ${MAX_TITLE_LEN} characters or fewer` };
     patch.title = b.title.trim();
   }
   if (b.description !== undefined) {
     if (typeof b.description !== "string") return { ok: false, error: "description must be a string" };
+    if (b.description.length > MAX_DESCRIPTION_LEN) return { ok: false, error: `description must be ${MAX_DESCRIPTION_LEN} characters or fewer` };
     patch.description = b.description;
   }
   if (b.label !== undefined) {
